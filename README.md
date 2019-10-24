@@ -1,4 +1,4 @@
-# redditswapbot
+# TPFS (Thinkpads For Sale) Bot
 
 ## Description
 
