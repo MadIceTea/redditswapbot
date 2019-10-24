@@ -56,9 +56,15 @@ Heatware may or may not be deployed in our subreddit, this will probably be left
 ## TODO
 
 (a) Just about everything, including making an actual TODO list of programming issues involved.
+
 (b) Collaborate with anyone still interested in helping. There's a week left before Hacktobefrest is over and I think people will want their T-shirts. List them all in a CONTRIBUTORS.md file.
+
 (c) Find hosting for the bot. Thinking Heroku, but also hearing options such as micro instances on Google Cloud, small box on Vultr, or Glitch.
+
 (d) If we use a more expensive hosting option, we may need to fundraise. Might make a donations entry on the README, github wiki, or subreddit -- probably using Stripe as the funds disbursement provider.
+
 (e) Register the bot and get API key for our PRAW initialisation file.
+
 (f) Once the code is looking alright here, running the internal GitHub Security Scanner tool to check for tokens, necessary updates to dependencies, or other CVE problems. On that note, writing up a quick security and responsible reporting policy -- probably by writing SECPOL.md in this repository.
+
 (g) Holding an announcemnet for a testing period and making a subreddit post to inform of these changes. If all goes well, this will smoothly become the beginning of operations date for the bot.
