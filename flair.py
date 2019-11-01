@@ -1,16 +1,19 @@
 #!/usr/bin/env python2
 
-import sys, os
+import sys
+import os
 import re
 import ast
 import praw
 import sqlite3
 import datetime
-from ConfigParser import SafeConfigParser
-from datetime import datetime, timedelta
-from time import sleep, time
+from configparser import ConfigParser
+from datetime import datetime
+# from datetime import datetime, timedelta
+# from time import sleep, time
 from log_conf import LoggerManager
 import argparse
+
 # determine curr or prev month
 parser = argparse.ArgumentParser(description="Process flairs")
 parser.add_argument("-m", action="store", dest="month", default="curr", help="curr or prev month? (default: curr)")
@@ -21,7 +24,7 @@ if results.month == "prev":
 
 # load config file
 containing_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
-cfg_file = SafeConfigParser()
+cfg_file = ConfigParser()
 path_to_cfg = os.path.join(containing_dir, 'config.cfg')
 cfg_file.read(path_to_cfg)
 username = cfg_file.get('reddit', 'username')
@@ -30,7 +33,7 @@ app_key = cfg_file.get('reddit', 'app_key')
 app_secret = cfg_file.get('reddit', 'app_secret')
 subreddit = cfg_file.get('reddit', 'subreddit')
 link_id = cfg_file.get('trade', conf_link_id)
-equal_warning = cfg_file.get('trade', 'equal')
+equal_warning = cfg_file.get('trade', 'e2e')
 age_warning = cfg_file.get('trade', 'age')
 karma_warning = cfg_file.get('trade', 'karma')
 dev_warning = cfg_file.get('trade', 'dev')
@@ -43,6 +46,7 @@ notrade_flairclass = ast.literal_eval(cfg_file.get('trade', 'notrade_flairclass'
 
 # Configure logging
 logger = LoggerManager().getLogger(__name__)
+
 
 def main():
 
@@ -84,15 +88,20 @@ def main():
                 db_flair_css_class = 0
             if item.author_flair_css_class in notrade_flairclass:
                 return True
-            if (int(item.author_flair_css_class or 0) > (int(row['flair_css_class'] or 0) + int(flair_dev))) or (int(item.author_flair_css_class or 0) < (int(row['flair_css_class'] or 0) - int(flair_dev))):
+            if (int(item.author_flair_css_class or 0) > (int(row['flair_css_class'] or 0) + int(flair_dev))) or (
+                    int(item.author_flair_css_class or 0) < (int(row['flair_css_class'] or 0) - int(flair_dev))):
                 logger.info('Rechecking deviation: ' + item.author.name)
                 second_chance = next(r.subreddit(subreddit).flair(item.author.name))
                 if second_chance['flair_css_class'] == item.author_flair_css_class:
                     item.report('Flair: Deviation between DB and Reddit')
                     if dev_warning:
                         item.reply(dev_warning)
-                    r.subreddit(subreddit).message('Flair Devation Detected', 'User: /u/' + item.author.name + '\n\nDB: ' + str(row['flair_css_class']) + '\n\nReddit: ' + str(item.author_flair_css_class))
-                    logger.info('Flair Deviation - User: ' + item.author.name + ', DB: ' + str(row['flair_css_class']) + ', Reddit: ' + str(item.author_flair_css_class))
+                    r.subreddit(subreddit).message('Flair Devation Detected',
+                                                   'User: /u/' + item.author.name + '\n\nDB: ' + str(
+                                                       row['flair_css_class']) + '\n\nReddit: ' + str(
+                                                       item.author_flair_css_class))
+                    logger.info('Flair Deviation - User: ' + item.author.name + ', DB: ' + str(
+                        row['flair_css_class']) + ', Reddit: ' + str(item.author_flair_css_class))
                     save()
                     return True
 
@@ -119,7 +128,7 @@ def main():
                 item.author_flair_css_class = '1'
             else:
                 item.author_flair_css_class = str(int(item.author_flair_css_class or 0) + 1)
-        elif (item.author_flair_css_class and (item.author_flair_css_class in notrade_flairclass)):
+        elif item.author_flair_css_class and (item.author_flair_css_class in notrade_flairclass):
             pass
         else:
             item.author_flair_css_class = str(int(item.author_flair_css_class) + 1)
@@ -132,8 +141,10 @@ def main():
             r.subreddit(subreddit).flair.set(item.author, item.author_flair_text, item.author_flair_css_class)
             logger.info('Set ' + item.author.name + '\'s flair to ' + item.author_flair_css_class)
             # Set flair in database
-            curs.execute('''UPDATE OR IGNORE flair SET flair_text=?, flair_css_class=? WHERE username=?''', (item.author_flair_text, item.author_flair_css_class, item.author.name, ))
-            curs.execute('''INSERT OR IGNORE INTO flair (username, flair_text, flair_css_class) VALUES (?, ?, ?)''', (item.author.name, item.author_flair_text, item.author_flair_css_class, ))
+            curs.execute('''UPDATE OR IGNORE flair SET flair_text=?, flair_css_class=? WHERE username=?''',
+                         (item.author_flair_text, item.author_flair_css_class, item.author.name,))
+            curs.execute('''INSERT OR IGNORE INTO flair (username, flair_text, flair_css_class) VALUES (?, ?, ?)''',
+                         (item.author.name, item.author_flair_text, item.author_flair_css_class,))
             con.commit()
 
         for com in flat_comments:
@@ -143,7 +154,7 @@ def main():
 
     def save():
         with open(link_id + ".log", 'a') as myfile:
-                myfile.write('%s\n' % comment.id)
+            myfile.write('%s\n' % comment.id)
 
     try:
         # Load old comments
@@ -153,7 +164,7 @@ def main():
         try:
             con = sqlite3.connect(flair_db)
             con.row_factory = sqlite3.Row
-        except sqlite3.Error, e:
+        except sqlite3.Error as e:
             logger.exception("Error %s:" % e.args[0])
 
         curs = con.cursor()
@@ -214,16 +225,16 @@ def main():
             if not msg.was_comment:
                 if msg.author in mods:
                     logger.info('Processing PM from mod: ' + msg.author.name)
-                    mod_link = re.search('^(https?:\/\/(?:www\.)?reddit\.com\/r\/.*\/comments\/.{6}\/.*\/.{7}\/)$', msg.body)
+                    mod_link = re.search('^(https?://(?:www\.)?reddit\.com/r/.*/comments/.{6}/.*/.{7}/)$', msg.body)
                     if not mod_link:
                         msg.reply('You have submitted an invalid URL')
                         msg.mark_as_read()
                         continue
                     else:
-                        match = re.search(r'[^/]+(?=\/$|$)', msg.body)
+                        match = re.search(r'[^/]+(?=/$|$)', msg.body)
                         check_id = match.group(0)
-                        tocheck = r.comment(id=check_id).refresh()
-                        flat_comments = tocheck.replies.list()
+                        to_check = r.comment(id=check_id).refresh()
+                        flat_comments = to_check.replies.list()
                         for comment in flat_comments:
                             if not hasattr(comment, 'author'):
                                 continue
@@ -236,7 +247,7 @@ def main():
                             if parent.mod_reports:
                                 parent.mod.approve()
 
-                            parent = tocheck
+                            parent = to_check
 
                             logger.info('Mod - Verifying comment id: ' + comment.id + ' and parent id: ' + parent.id)
 
@@ -256,13 +267,14 @@ def main():
                             msg.mark_read()
                 else:
                     logger.info('Processing PM from user: ' + msg.author.name)
-                    msg.reply('[BEEP BOOP! I AM A BOT!](http://i.imgur.com/9dJ2quO.gif)')
+                    msg.reply('[I am an automated bot, still under construction!](https://i.imgur.com/PkqGkst.jpg)')
                     msg.mark_read()
 
         con.close()
 
     except Exception as e:
         logger.error(e)
+
 
 if __name__ == '__main__':
     main()

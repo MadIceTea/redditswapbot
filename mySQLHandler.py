@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 '''
-Created on 02/01/2014
+Originally created on 02/01/2014.
+Last modified by madicetea on 10/31/2019.
+Various changes made to upgrade Python 2 syntax to Python 3.
 '''
 
-import MySQLdb
+# import MySQLdb -- There is no MySQLdb for python3.x
+# see https://raspberrypi.stackexchange.com/a/101208
+import pymysql
 import _mysql_exceptions
 import logging
 import time
- 
+
+
 class mySQLHandler(logging.Handler):
     """
     Logging handler for MySQL.
@@ -35,7 +40,7 @@ class mySQLHandler(logging.Handler):
     @email: "onemoretime@cyber.world.universe"
     @status: "Alpha"
     """
- 
+
     initial_sql = """CREATE TABLE IF NOT EXISTS log(
     Created text,
     Name text,
@@ -51,7 +56,7 @@ class mySQLHandler(logging.Handler):
     Thread text,
     ThreadName text
     )"""
- 
+
     insertion_sql = """INSERT INTO log(
     Created,
     Name,
@@ -83,14 +88,14 @@ class mySQLHandler(logging.Handler):
     %(threadName)s
     );
     """
- 
+
     def __init__(self, db):
         """
         Constructor
         @param db: ['host','port','dbuser', 'dbpassword', 'dbname'] 
         @return: mySQLHandler
         """
-        
+
         logging.Handler.__init__(self)
         self.db = db
         # Try to connect to DB
@@ -100,11 +105,12 @@ class mySQLHandler(logging.Handler):
         # If not exists, then create the table
         if not result:
             try:
-                conn=MySQLdb.connect(host=self.db['host'],port=self.db['port'],user=self.db['dbuser'],passwd=self.db['dbpassword'],db=self.db['dbname'])
-            except _mysql_exceptions, e:
+                conn = pymysql.connect(host=self.db['host'], port=self.db['port'], user=self.db['dbuser'],
+                                       passwd=self.db['dbpassword'], db=self.db['dbname'])
+            except _mysql_exceptions as e:
                 raise Exception(e)
                 exit(-1)
-            else:         
+            else:
                 cur = conn.cursor()
                 try:
                     cur.execute(mySQLHandler.initial_sql)
@@ -119,11 +125,12 @@ class mySQLHandler(logging.Handler):
                 finally:
                     cur.close()
                     conn.close()
-        
+
     def checkTablePresence(self):
         try:
-            conn=MySQLdb.connect(host=self.db['host'],port=self.db['port'],user=self.db['dbuser'],passwd=self.db['dbpassword'],db=self.db['dbname'])
-        except _mysql_exceptions, e:
+            conn = pymysql.connect(host=self.db['host'], port=self.db['port'], user=self.db['dbuser'],
+                                   passwd=self.db['dbpassword'], db=self.db['dbname'])
+        except _mysql_exceptions as e:
             raise Exception(e)
             exit(-1)
         else:
@@ -134,28 +141,29 @@ class mySQLHandler(logging.Handler):
             result = cur.fetchone()
             cur.close()
             conn.close()
-        
+
         if not result:
             return 0
         else:
             return 1
+
     def createTableLog(self):
         pass
-        
+
     def formatDBTime(self, record):
         """
         Time formatter
         @param record:
         @return: nothing
-        """ 
+        """
         record.dbtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(record.created))
- 
+
     def emit(self, record):
         """
         Connect to DB, execute SQL Request, disconnect from DB
         @param record:
         @return: 
-        """ 
+        """
         # Use default formatting:
         self.format(record)
         # Set the database time up:
@@ -167,40 +175,41 @@ class mySQLHandler(logging.Handler):
         # Insert log record:
         sql = mySQLHandler.insertion_sql
         try:
-            conn=MySQLdb.connect(host=self.db['host'],port=self.db['port'],user=self.db['dbuser'],passwd=self.db['dbpassword'],db=self.db['dbname'])
-        except _mysql_exceptions, e:
+            conn = pymysql.connect(host=self.db['host'], port=self.db['port'], user=self.db['dbuser'],
+                                   passwd=self.db['dbpassword'], db=self.db['dbname'])
+        except _mysql_exceptions as e:
             from pprint import pprint
-            print("The Exception during db.connect")           
+            print("The Exception during db.connect")
             pprint(e)
             raise Exception(e)
             exit(-1)
         cur = conn.cursor()
         try:
-            cur.execute(sql, (record.__dict__))
+            cur.execute(sql, record.__dict__)
         except _mysql_exceptions.ProgrammingError as e:
             errno, errstr = e.args
             if not errno == 1146:
                 raise
-            cur.close() # close current cursor
-            cur = conn.cursor() # recreate it (is it mandatory?)
-            try:            # try to recreate table
+            cur.close()  # close current cursor
+            cur = conn.cursor()  # recreate it (is it mandatory?)
+            try:  # try to recreate table
                 cur.execute(mySQLHandler.initial_sql)
             except _mysql_exceptions as e:
-                # definitly can't work...
+                # definitely can't work...
                 conn.rollback()
                 cur.close()
                 conn.close()
                 raise Exception(e)
                 exit(-1)
-            else:   # if recreate log table is ok
-                conn.commit()                  
+            else:  # if recreate log table is ok
+                conn.commit()
                 cur.close()
                 cur = conn.cursor()
                 cur.execute(sql)
                 conn.commit()
                 # then Exception vanished
-                    
-        except _mysql_exceptions, e:
+
+        except _mysql_exceptions as e:
             conn.rollback()
             cur.close()
             conn.close()
@@ -211,7 +220,8 @@ class mySQLHandler(logging.Handler):
         finally:
             cur.close()
             conn.close()
-        
+
+
 def main():
     def print_all_log(oLog):
         # Print all log levels
@@ -220,19 +230,16 @@ def main():
         oLog.warning('warning')
         oLog.error('error')
         oLog.critical('critical')
-    
-                
+
     logger = logging.getLogger('simple_example')
     logger.setLevel(logging.DEBUG)
-        
-    db = {'host':'localhost', 'port': 3306, 'dbuser':'logger', 'dbpassword':'loggerpasswd', 'dbname':'logger'}
-    
+
+    db = {'host': 'localhost', 'port': 3306, 'dbuser': 'logger', 'dbpassword': 'loggerpasswd', 'dbname': 'logger'}
+
     sqlh = mySQLHandler(db)
     logger.addHandler(sqlh)
     # In main Thread
     print_all_log(logger)
-    
-
 
 
 if __name__ == '__main__':
