@@ -1,11 +1,12 @@
-import sys, os
-from ConfigParser import SafeConfigParser
 import logging
+import os
+import sys
+from configparser import ConfigParser
 import mySQLHandler
 
 # load config file
 containing_dir = os.path.abspath(os.path.dirname(sys.argv[0]))
-cfg_file = SafeConfigParser()
+cfg_file = ConfigParser()
 path_to_cfg = os.path.join(containing_dir, 'config.cfg')
 cfg_file.read(path_to_cfg)
 logging_dest = cfg_file.get('logging','dest')
